@@ -1,0 +1,214 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta http-equiv="X-UA-Compatible" content="IE=edge">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Gamepad Tester</title>
+    <style>
+        canvas {
+            border: 2px solid #888;
+        }
+    </style>
+</head>
+
+<body>
+    <canvas id="axes1" width="200" height="200"></canvas>
+    <canvas id="axes2" width="200" height="200" style="display:none"></canvas>
+    <canvas id="graph" width="408" height="200"></canvas>
+    <ul id="log" style="display:none"></ul>
+    <script>
+
+        axes1 = document.getElementById("axes1").getContext("2d");
+        axes2 = document.getElementById("axes2").getContext("2d");
+        graph = document.getElementById("graph").getContext("2d");
+
+        p = 10;
+        axes1.fillRect(p, p, axes1.canvas.width - p * 2, axes2.canvas.height - p * 2)
+        axes2.fillRect(p, p, axes1.canvas.width - p * 2, axes2.canvas.height - p * 2)
+
+        log = (...msg) => {
+            console.log(msg)
+            li = document.createElement("li");
+            li.innerText = String(msg)
+            document.getElementById("log").appendChild(li)
+        }
+        window.addEventListener("gamepadconnected", e => {
+            console.log(
+                "Gamepad connected at index %d: %s. %d buttons, %d axes.",
+                e.gamepad.index,
+                e.gamepad.id,
+                e.gamepad.buttons.length,
+                e.gamepad.axes.length,
+            );
+            log(e);
+        });
+        window.addEventListener("gamepaddisconnected", e => {
+            log(e);
+        });
+        axeslog = []
+        var returnto0 = false;
+
+        var MyRect = (x, y, w, h) => {
+            return {
+                x: x,
+                y: y,
+                w: w,
+                h: h,
+                contains: (px, py) => {
+                    return x <= px && px <= x + w &&
+                        y <= py && py <= y + h;
+                },
+                arr: () => {
+                    return [x, y, w, h]
+                }
+            }
+        };
+        e = MyRect(0, 0, 10, 10)
+        console.log(e, e.contains(5, 5), e.arr());
+        finished = false;
+        starttime = performance.now()
+        update = () => {
+            txt = ""
+            navigator.getGamepads().forEach(gp => {
+                //console.log(gp.axes, gp.buttons);
+            });
+            gps = navigator.getGamepads()
+            //axes1.beginPath();
+            axes1.clearRect(0, 0, axes1.canvas.width, axes1.canvas.height);
+            //axes1.fillRect(axes1.canvas.width/2*(Math.sin(performance.now()/1000)/2+0.5),axes1.canvas.height/2,10,10)
+
+            axes2.clearRect(0, 0, axes2.canvas.width, axes2.canvas.height);
+
+            axes1.fillStyle = "#f00"
+            b = 10;
+            rects = [
+            ]
+            addrect = (x, y, w, h) => {
+                rects.push([x, y, w, h]);
+            }
+
+            addrect(0, 0, b, axes1.canvas.height)
+            addrect(axes1.canvas.width - b, 0, b, axes1.canvas.height)
+            addrect(0, axes1.canvas.width - b, axes1.canvas.width, b)
+            addrect(0, 0, axes1.canvas.width, b)
+
+            addrect(axes1.canvas.width / 2 - b * 1, axes1.canvas.height / 2 - b * 2, b * 3, b)
+            addrect(axes1.canvas.width / 2 - b * 2, axes1.canvas.height / 2 - b * 2, b, b * 4)
+
+            //addrect(axes1.canvas.width / 2 - b * 2, axes1.canvas.height / 2 + b * 2, b * 11, b)
+            //axes1.rect(axes1.canvas.width/2+b*2,axes1.canvas.height/2-b*1,b,b*4)
+
+            axes1.beginPath();
+            drawrect = e => {
+                axes1.fillRect(e[0], e[1], e[2], e[3])
+                axes1.rect(e[0], e[1], e[2], e[3])
+            }
+
+            rects.forEach(drawrect)
+            finish = [axes1.canvas.width / 2 + b * 4, axes1.canvas.height / 2 + b * 3, b * 5, b]
+            axes1.fillStyle = "#0f0"
+            drawrect(finish);
+            axes1.stroke();
+            var finishtime = 0;
+            try {
+                
+                if (gps.length > 0 && gps[0] != null) {
+
+                    axes1.fillStyle = "#000"
+                    s = 10;
+                    if (returnto0 == false) {
+                        axes1.fillRect(
+                            (axes1.canvas.width - s) * (gps[0].axes[0] / 2 + 0.5),
+                            (axes1.canvas.height - s) * (gps[0].axes[1] / 2 + 0.5),
+                            s, s)
+                    }else{
+                        console.log(gps[0].axes)
+                        if (Math.abs(gps[0].axes[0]) < 0.001 && Math.abs(gps[0].axes[1]) < 0.001) {
+                            returnto0 = false;
+                            starttime = performance.now()
+                        }
+                    }
+                    if(finished){
+                        axes1.fillStyle = "#fffb";
+                        axes1.fillRect(0, 0, axes1.canvas.width, axes1.canvas.height)
+                        axes1.fillStyle = "#000";
+                        axes1.font = "20px sans-serif";
+                        axes1.textAlign = "center";
+                        axes1.fillText("Finished", axes1.canvas.width / 2, axes1.canvas.height * 1 / 4);
+                        axes1.fillText("Time "+(Math.round((finishtime)/100)/10)+"s", axes1.canvas.width / 2, axes1.canvas.height * 3 / 4);
+                        starttime = performance.now();
+                        setTimeout(()=>{
+                            finished = false;
+                            returnto0 = true;
+                        },5000)
+                    }else{
+                        if (returnto0 == false) {
+                            rects.forEach(e => {
+                                //console.log(e)
+                                if (MyRect(e[0], e[1], e[2], e[3]).contains(
+                                    (axes1.canvas.width - 10) * (gps[0].axes[0] / 2 + 0.5) + s / 2,
+                                    (axes1.canvas.height - 10) * (gps[0].axes[1] / 2 + 0.5) + s / 2)
+                                ) {
+                                    returnto0 = true;
+                                    log("return to middle")
+                                }
+                            })
+                            e = finish;
+                            if (MyRect(e[0], e[1], e[2], e[3]).contains(
+                                (axes1.canvas.width - 10) * (gps[0].axes[0] / 2 + 0.5) + s / 2,
+                                (axes1.canvas.height - 10) * (gps[0].axes[1] / 2 + 0.5) + s / 2)
+                            ) {
+                                finished = true;
+                                finishtime = performance.now()-starttime;
+                                console.log(performance.now()-starttime,performance.now(),starttime)
+                            }
+                        } else {
+                            axes1.fillStyle = "#fffb";
+                            axes1.fillRect(0, 0, axes1.canvas.width, axes1.canvas.height)
+                            axes1.fillStyle = "#000";
+                            axes1.font = "20px sans-serif";
+                            axes1.textAlign = "center";
+                            axes1.fillText("Return to middle", axes1.canvas.width / 2, axes1.canvas.height * 3 / 4);
+                            
+
+                            axes1.fillText("Release Joystick ", axes1.canvas.width / 2, axes1.canvas.height * 1 / 4);
+                        }
+                    }
+                    axes1.font = "14px sans-serif";
+                    axes1.textAlign = "left";
+                    axes2.strokeStyle = "#00f"
+                    axes1.fillText(""+Math.round((performance.now()-starttime)/100)/10,12,22);
+                    axes2.fillStyle = "#000"
+                    axes2.fillRect(
+                        (axes1.canvas.width - 10) * (gps[0].axes[2] / 2 + 0.5),
+                        (axes1.canvas.height - 10) * (gps[0].axes[3] / 2 + 0.5),
+                        10, 10)
+                    axeslog.push(gps[0].axes)
+                    graph.clearRect(0, 0, graph.canvas.width, graph.canvas.height);
+                    for (let y = 0; y < 4; y++) {
+                        graph.strokeStyle = 'hsl(' + 333 * y + ',100%,50%)';
+                        l = axeslog.length;
+                        graph.beginPath()
+                        start = l - 400;
+                        start = Math.max(0, start);
+                        partl = l - start;
+                        graph.moveTo(0, (axeslog[0][y] / 2 + 0.5) * graph.canvas.height)
+                        for (let x = start; x < l; x++) {
+                            graph.lineTo((x - start) / partl * graph.canvas.width, (axeslog[x][y] / 2 + 0.5) * graph.canvas.height)
+                        }
+                        graph.stroke();
+                    }
+                }
+            } catch (e) {
+                console.log(e)
+            }
+
+            requestAnimationFrame(update);
+        }
+        requestAnimationFrame(update);
+    </script>
+</body>
+
+</html>
